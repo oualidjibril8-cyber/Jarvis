@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JARVIS To-Do List - A powerful offline-capable to-do list PWA with local storage">
+    <meta name="theme-color" content="#0066ff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JARVIS Todo">
+    
+    <!-- Manifest for PWA -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect fill='%230066ff' width='180' height='180'/%3E%3Ctext x='90' y='110' font-size='70' fill='white' text-anchor='middle' font-family='Arial'%3E✓%3C/text%3E%3C/svg%3E">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%230066ff' width='100' height='100'/%3E%3Ctext x='50' y='65' font-size='60' fill='white' text-anchor='middle' font-family='Arial'%3E✓%3C/text%3E%3C/svg%3E">
+    
+    <title>JARVIS - To-Do List PWA</title>
+    <link rel="stylesheet" href="todo-styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📋 My To-Do List</h1>
+            <p class="subtitle">Stay organized and productive</p>
+            <div class="online-status">
+                <span id="onlineIndicator" class="status-dot online"></span>
+                <span id="statusText" class="status-text">Online</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Input Section -->
+            <div class="input-section">
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="todoInput" 
+                        class="todo-input" 
+                        placeholder="Add a new task..."
+                        autocomplete="off"
+                    >
+                    <button id="addBtn" class="add-btn">
+                        <span>+</span> Add Task
+                    </button>
+                </div>
+            </div>
+
+            <!-- Install PWA Button -->
+            <div id="installPrompt" class="install-prompt hidden">
+                <p>📱 Add this app to your home screen!</p>
+                <button id="installBtn" class="install-btn">Install App</button>
+                <button id="dismissBtn" class="dismiss-btn">✕</button>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <button class="filter-btn active" data-filter="all">
+                    📊 All
+                </button>
+                <button class="filter-btn" data-filter="active">
+                    ⏳ Active
+                </button>
+                <button class="filter-btn" data-filter="completed">
+                    ✅ Completed
+                </button>
+            </div>
+
+            <!-- Stats Section -->
+            <div class="stats-section">
+                <div class="stat">
+                    <span class="stat-value" id="totalTasks">0</span>
+                    <span class="stat-label">Total Tasks</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="activeTasks">0</span>
+                    <span class="stat-label">Active</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="completedTasks">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+            </div>
+
+            <!-- Todo List -->
+            <div class="todo-list-wrapper">
+                <ul id="todoList" class="todo-list">
+                    <!-- Todo items will be added here dynamically -->
+                </ul>
+                <div id="emptyState" class="empty-state">
+                    <p>✨ No tasks yet. Add one to get started!</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button id="clearCompleted" class="btn btn-secondary">
+                    🗑️ Clear Completed
+                </button>
+                <button id="clearAll" class="btn btn-danger">
+                    ⚠️ Clear All
+                </button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2026 JARVIS To-Do List PWA | Works Offline ✨</p>
+        </footer>
+    </div>
+
+    <!-- Service Worker Registration -->
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registered successfully:', registration);
+                    })
+                    .catch((error) => {
+                        console.log('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // Handle online/offline status
+        window.addEventListener('online', () => {
+            updateOnlineStatus(true);
+        });
+
+        window.addEventListener('offline', () => {
+            updateOnlineStatus(false);
+        });
+
+        function updateOnlineStatus(isOnline) {
+            const indicator = document.getElementById('onlineIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            if (isOnline) {
+                indicator.classList.remove('offline');
+                indicator.classList.add('online');
+                statusText.textContent = 'Online';
+            } else {
+                indicator.classList.remove('online');
+                indicator.classList.add('offline');
+                statusText.textContent = 'Offline (Local Storage)';
+            }
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installPrompt = document.getElementById('installPrompt');
+        const installBtn = document.getElementById('installBtn');
+        const dismissBtn = document.getElementById('dismissBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installPrompt.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                deferredPrompt = null;
+                installPrompt.classList.add('hidden');
+            }
+        });
+
+        dismissBtn.addEventListener('click', () => {
+            installPrompt.classList.add('hidden');
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA was installed');
+            deferredPrompt = null;
+            installPrompt.classList.add('hidden');
+        });
+    </script>
+
+    <script src="todo-script.js"></script>
+</body>
+</html>
